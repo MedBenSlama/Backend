@@ -1,45 +1,39 @@
-import { CreateUser, User } from "../interfaces/user.interface";
+import { Repository } from "typeorm";
+import { CreateUser, IUser} from "../interfaces/user.interface";
+import { User } from "../entites/user.entity";
+import { AppDataSource } from "../config/data-source";
 
 export class UserService{
-    private users: User[] = [
-    {
-        id: 1,
-        name: "John Doe",
-        email: "john.doe@example.com",
-        age: 30
-    },
-    {
-        id: 2,
-        name: "Jane Smith",
-        email: "jane.smith@example.com",
-        age: 25
-    },
-    {
-        id: 3,
-        name: "Alice Johnson",
-        email: "alice.johnson@example.com",
-        age: 28
-    }
-];
-    
-getAllUsersService(): User[]{
-
-        return this.users;
-    }
-
- getUserByIdService(id: number): User | undefined{  
-    console.log("hello");
-    
-        return this.users.find(user => user.id === id); 
+private userRepository: Repository<User>;
+constructor() {
+    this.userRepository = AppDataSource.getRepository(User); 
 }
-createUserService(data: CreateUser): User {
-    const newUser: User = {
-        id: this.users.length + 1,
-        ...data
-    };
-    this.users.push(newUser);
-    console.log("Created User ",this.users);
     
-    return newUser;
+async getAllUsersService(): Promise<User[]>{
+        return this.userRepository.find();
+    }
+
+async getUserByIdService(id: number): Promise<User | undefined>{
+        const user = await this.userRepository.findOneBy({ id });
+        return user ?? undefined;
+}
+async createUserService(data: CreateUser): Promise<User> {
+    const newUser = this.userRepository.create(data);
+    return await this.userRepository.save(newUser);
+}
+
+// PUT: update user
+async updateUserService(id: number, data: Partial<CreateUser>): Promise<User | undefined> {
+    const user = await this.userRepository.findOneBy({ id });
+    if (!user) return undefined;
+
+    const updatedUser = this.userRepository.merge(user, data);
+    return await this.userRepository.save(updatedUser);
+}
+
+// DELETE: remove user
+async deleteUserService(id: number): Promise<boolean> {
+    const result = await this.userRepository.delete(id);
+    return (result.affected ?? 0) > 0;
 }
 }
